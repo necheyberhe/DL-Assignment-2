@@ -1,0 +1,17 @@
+# Dataset
+Data/
+
+# Python cache
+__pycache__/
+*.pyc
+
+
+# Outputs
+outputs/
+losses/
+# VSCode
+.vscode/
+
+# Models
+*.pth
+*.pt
