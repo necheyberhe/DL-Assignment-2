@@ -1,0 +1,4 @@
+model,auc
+KochCNN,0.8321400000000001
+ResNet18Scratch,0.750544
+ResNet18_Pretrained,0.8056559999999999

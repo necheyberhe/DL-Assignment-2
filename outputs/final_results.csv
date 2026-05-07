@@ -1,0 +1,8 @@
+model,test_accuracy,auc,oneshot_acc_N2,oneshot_acc_N5,oneshot_acc_N20
+BCE_L1,0.666,,0.74,0.38,0.115
+Contrastive,0.733,,0.845,0.545,0.235
+Triplet_Random,0.739,,0.82,0.49,0.22
+Triplet_Semihard,0.735,,0.855,0.545,0.31
+KochCNN,0.766,0.8321400000000001,0.86,0.6,0.33
+ResNet18Scratch,0.638,0.750544,0.69,0.37,0.13
+ResNet18_Pretrained,0.7009999752044678,0.8056559999999999,0.72,0.59,0.275
