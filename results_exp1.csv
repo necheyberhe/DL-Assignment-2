@@ -1,0 +1,5 @@
+method,backbone,loss,margin,selection_metric,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint
+BCE_L1,KochCNN,BCE,,validation_accuracy,1,0.4699999988079071,0.6522727012634277,0.666,checkpoints/best_bce_l1.pt
+Contrastive,KochCNN,contrastive,0.5,validation_accuracy,3,0.2139866054058075,0.7522727251052856,0.733,checkpoints/best_contrastive.pt
+Triplet_Random,KochCNN,triplet_random,0.2,validation_accuracy,3,0.49941086769104004,0.7568181753158569,0.739,checkpoints/best_triplet_random_margin_0.2.pt
+Triplet_Semihard,KochCNN,triplet_semihard,0.2,validation_accuracy,3,1.1258426904678345,0.7909091114997864,0.735,checkpoints/best_triplet_semihard_margin_0.2.pt
