@@ -1,5 +1,13 @@
 # DL-Assignment-2
 
+|Students:
+|Name             |         ID      |
+
+|Noga Klein       |       326364007 |
+
+|Nechi Berhe Weldu|       850164070 | 
+
+
 # Deep Metric Learning for Face Verification and One-Shot Recognition
 
 PyTorch implementation and analysis of Siamese and metric-learning approaches on the LFW-a dataset.
