@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
-
+import pandas as pd
 from Data.datasets import (
     PairDataset,
     IdentityDataset,
@@ -21,14 +21,29 @@ from utils.logger import append_result
 print("Experiment 2: Backbone comparison started")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+import argparse
+from utils.seed import set_seed
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--seed", type=int, default=42)
+parser.add_argument("--only_backbone", type=str, default=None)
+
+args = parser.parse_args()
+
+set_seed(args.seed)
+seed = args.seed
 root_dir = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\lfw2\lfw2"
 pairs_train = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTrain.txt"
 pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTest.txt"
-
+output_dir = Path("outputs")
+output_dir.mkdir(exist_ok=True)
 embedding_dim = 128
 margin = 0.2
-num_epochs = 3
+
+num_epochs = 30
+patience = 5
+min_delta = 1e-4
+
 batch_size = 64
 lr = 1e-4
 
@@ -43,8 +58,8 @@ full_pair_train_ds = PairDataset(pairs_train, root_dir, transform)
 train_size = int(0.8 * len(full_pair_train_ds))
 val_size = len(full_pair_train_ds) - train_size
 
-generator = torch.Generator().manual_seed(42)
-
+# generator = torch.Generator().manual_seed(42)
+generator = torch.Generator().manual_seed(seed)
 pair_train_ds, pair_val_ds = random_split(
     full_pair_train_ds,
     [train_size, val_size],
@@ -182,9 +197,9 @@ def train_backbone(backbone_name):
     best_epoch = -1
     best_threshold_saved = None
     best_test_acc_saved = None
-
+    epochs_without_improvement = 0
     start_time = time.time()
-
+    history=[]
     for epoch in range(num_epochs):
         backbone.train()
 
@@ -244,12 +259,28 @@ def train_backbone(backbone_name):
             device,
             threshold=best_threshold
         )
+        elapsed = time.time() - start_time
 
-        if val_best_acc > best_val_acc:
+        history.append({
+            "seed": seed,
+            "backbone": backbone_name,
+            "epoch": epoch + 1,
+            "train_loss": avg_loss,
+            "val_default_acc": val_default_acc,
+            "val_best_acc": val_best_acc,
+            "val_best_threshold": best_threshold,
+            "test_acc_at_val_threshold": test_acc,
+            "used_batches": used_batches,
+            "skipped_batches": skipped_batches,
+            "wall_time_sec": elapsed,
+        })
+
+        if val_best_acc > best_val_acc + min_delta:
             best_val_acc = val_best_acc
             best_epoch = epoch + 1
             best_threshold_saved = best_threshold
             best_test_acc_saved = test_acc
+            epochs_without_improvement = 0
 
             torch.save(
                 {
@@ -267,9 +298,25 @@ def train_backbone(backbone_name):
                     "val_best_acc": best_val_acc,
                     "val_best_threshold": best_threshold_saved,
                     "test_acc_at_val_threshold": best_test_acc_saved,
+                    "seed": seed,
+                    "max_epochs": num_epochs,
+                    "patience": patience,
+                    "min_delta": min_delta,
+                    "stopping_rule": "validation_accuracy"
                 },
-                checkpoint_dir / f"exp2_best_{backbone_name}.pt"
+                # checkpoint_dir / f"exp2_best_{backbone_name}.pt"
+                checkpoint_dir / f"exp2_best_{backbone_name}_seed_{seed}.pt"
             )
+        else:
+            epochs_without_improvement += 1
+
+        if epochs_without_improvement >= patience:
+            print(
+                f"Early stopping for {backbone_name} "
+                f"at epoch {epoch + 1}; best epoch was {best_epoch}"
+            )
+            break
+
 
         print(
             f"Backbone {backbone_name} | "
@@ -292,8 +339,16 @@ def train_backbone(backbone_name):
     print(f"Training time: {training_time_sec:.2f} seconds")
     print(f"Saved checkpoint: checkpoints/exp2_best_{backbone_name}.pt")
 
+    history_df = pd.DataFrame(history)
+    history_path = (
+        output_dir /
+        f"history_exp2_{backbone_name}_seed_{seed}.csv"
+    )
+    history_df.to_csv(history_path, index=False)
+    print(f"Saved history: {history_path}")
+
     append_result(
-        "results_exp2.csv",
+        f"results_exp2_seed_{seed}.csv",
         {
             "backbone": backbone_name,
             "loss": "triplet_semihard",
@@ -308,6 +363,11 @@ def train_backbone(backbone_name):
             "val_accuracy": best_val_acc,
             "test_accuracy": best_test_acc_saved,
             "checkpoint": f"checkpoints/exp2_best_{backbone_name}.pt",
+            "seed": seed,
+            "max_epochs": num_epochs,
+            "patience": patience,
+            "min_delta": min_delta,
+            "stopping_rule": "validation_accuracy"
         }
     )
 
@@ -326,7 +386,12 @@ def train_backbone(backbone_name):
 if __name__ == "__main__":
     results = []
 
-    for backbone_name in ["koch", "resnet18"]:
+    # for backbone_name in ["koch", "resnet18"]:
+    backbones = ["koch", "resnet18"]
+    if args.only_backbone is not None:
+        backbones = [args.only_backbone]
+    for backbone_name in backbones:
+            
         result = train_backbone(backbone_name)
         results.append(result)
 

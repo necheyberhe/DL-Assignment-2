@@ -1,5 +1,7 @@
 method,auc
-BCE_L1,0.698852
-Contrastive,0.808892
-Triplet_Random,0.79896
-Triplet_Semihard,0.8030919999999999
+BCE_L1,0.6119439999999999
+Contrastive,0.819952
+Triplet_Random,0.7715080000000001
+Triplet_Semihard,0.746656
+Contrastive,0.819952
+Contrastive,0.819952

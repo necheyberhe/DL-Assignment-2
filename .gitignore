@@ -6,9 +6,9 @@ __pycache__/
 *.pyc
 
 
-# Outputs
-outputs/
-losses/
+# # Outputs
+# outputs/
+# losses/
 # VSCode
 .vscode/
 

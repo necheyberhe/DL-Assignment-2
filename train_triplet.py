@@ -19,7 +19,15 @@ from losses.losses import triplet_loss, semihard_triplets
 print("Triplet training started")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+import argparse
+from utils.seed import set_seed
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--seed", type=int, default=42)
+args = parser.parse_args()
+
+set_seed(args.seed)
+seed = args.seed
 root_dir = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\lfw2\lfw2"
 pairs_train = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTrain.txt"
 pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTest.txt"
@@ -186,6 +194,9 @@ def train_triplet_model(mode, margin=0.2, num_epochs=3):
     best_epoch = -1
     best_threshold_saved = None
     best_test_acc_saved = None
+    patience = 5
+    min_delta = 1e-4
+    epochs_without_improvement = 0
 
     for epoch in range(num_epochs):
         backbone.train()
@@ -235,27 +246,33 @@ def train_triplet_model(mode, margin=0.2, num_epochs=3):
             backbone, test_loader, device, threshold=best_threshold
         )
 
-        if val_best_acc > best_val_acc:
+        if val_best_acc > best_val_acc + min_delta:
             best_val_acc = val_best_acc
             best_epoch = epoch + 1
             best_threshold_saved = best_threshold
             best_test_acc_saved = test_acc
+            epochs_without_improvement = 0
 
             torch.save(
                 {
-                    "model_name": f"triplet_{mode}_koch",
+                    "model_name": "contrastive_koch",
                     "epoch": best_epoch,
                     "embedding_dim": 128,
                     "margin": margin,
-                    "mode": mode,
                     "backbone_state_dict": backbone.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "val_best_acc": best_val_acc,
-                    "val_best_threshold": best_threshold_saved,
-                    "test_acc_at_val_threshold": best_test_acc_saved,
+                    "val_best_threshold": best_threshold,
+                    "test_acc_at_val_threshold": test_acc,
                 },
-                checkpoint_dir / f"best_triplet_{mode}_margin_{margin}.pt"            )
+                checkpoint_dir / f"best_contrastive_margin_{margin}.pt"
+            )
+        else:
+            epochs_without_improvement += 1
 
+        if epochs_without_improvement >= patience:
+            print(f"Early stopping at epoch {epoch + 1}; best epoch was {best_epoch}")
+            break
         print(
             f"Mode {mode} | "
             f"Epoch {epoch + 1}/{num_epochs} | "
@@ -283,7 +300,7 @@ def train_triplet_model(mode, margin=0.2, num_epochs=3):
     }
 
 if __name__ == "__main__":
-    num_epochs = 3
+    num_epochs =30
 
     # Random triplet ablation, fixed margin
     random_result = train_triplet_model(

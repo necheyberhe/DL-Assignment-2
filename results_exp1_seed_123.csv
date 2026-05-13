@@ -1,0 +1,4 @@
+method,backbone,loss,margin,selection_metric,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,seed,train_time_sec,max_epochs,patience,min_delta,stopping_rule
+Contrastive,KochCNN,contrastive,1.0,validation_accuracy,11,0.6079727411270142,0.8068181872367859,0.729,checkpoints/best_contrastive_seed_123.pt,123,369.0780940055847,30,5,0.0001,validation_accuracy
+Contrastive,KochCNN,contrastive,1.0,validation_accuracy,11,0.6079727411270142,0.8068181872367859,0.729,checkpoints/best_contrastive_seed_123.pt,123,368.70870900154114,30,5,0.0001,validation_accuracy
+Contrastive,KochCNN,contrastive,1.0,validation_accuracy,11,0.6079727411270142,0.8068181872367859,0.729,checkpoints/best_contrastive_seed_123.pt,123,297.1271650791168,30,5,0.0001,validation_accuracy

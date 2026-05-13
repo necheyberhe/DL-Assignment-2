@@ -8,10 +8,8 @@ import torch.nn.functional as F
 
 from torchvision import transforms
 from torch.utils.data import DataLoader, Subset
-
-from Data.datasets import IdentityDataset
+from Data.datasets import IdentityDataset, PairDataset, identities_from_pairs
 from Models.models import KochBackbone
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -25,8 +23,19 @@ transform = transforms.Compose([
 
 print("Loading dataset...")
 
+pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTest.txt"
+
+test_pair_ds = PairDataset(
+    pairs_test,
+    root_dir,
+    transform
+)
+
+test_names = identities_from_pairs(test_pair_ds.pairs)
+
 dataset = IdentityDataset(
     root_dir=root_dir,
+    allowed_names=test_names,
     transform=transform
 )
 
@@ -171,9 +180,25 @@ plt.hist(
     label="Inter-class"
 )
 
+
+plt.axvline(
+    intra_dists.mean(),
+    linestyle="--",
+    linewidth=2,
+    label="Mean intra"
+)
+
+plt.axvline(
+    inter_dists.mean(),
+    linestyle="--",
+    linewidth=2,
+    label="Mean inter"
+)
+
+
 plt.xlabel("Euclidean Distance")
 plt.ylabel("Density")
-plt.title("Embedding Distance Distributions")
+plt.title("Intra-class and Inter-class Embedding Distance Distributions")
 plt.legend()
 plt.grid(True)
 

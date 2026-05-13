@@ -5,11 +5,10 @@ import pandas as pd
 
 from sklearn.metrics import roc_curve, auc
 from torch.utils.data import DataLoader
-from torchvision import transforms
-from torchvision import models
+from torchvision import transforms, models
 
 from Data.datasets import PairDataset
-from Models.models import KochBackbone
+from Models.models import KochBackbone, SiameseBCEHead
 from Models.resnet import ResNet18Backbone
 
 
@@ -27,34 +26,55 @@ transform_105 = transforms.Compose([
 transform_224 = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize([0.485,0.456,0.406],[0.229,0.224,0.225])
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225])
 ])
 
 test_loader_105 = DataLoader(
     PairDataset(pairs_test, root_dir, transform_105),
-    batch_size=32, shuffle=False
+    batch_size=32,
+    shuffle=False
 )
 
 test_loader_224 = DataLoader(
     PairDataset(pairs_test, root_dir, transform_224),
-    batch_size=32, shuffle=False
+    batch_size=32,
+    shuffle=False
 )
 
 
-def load_clean(model, path):
+def clean_state_dict(state):
+    return {
+        k: v for k, v in state.items()
+        if "total_ops" not in k and "total_params" not in k
+    }
+
+
+def load_backbone(model, path):
     ckpt = torch.load(path, map_location=device)
-    state = ckpt["backbone_state_dict"]
-
-    state = {k:v for k,v in state.items()
-             if "total_ops" not in k and "total_params" not in k}
-
+    state = clean_state_dict(ckpt["backbone_state_dict"])
     model.load_state_dict(state, strict=False)
     model.eval()
     return model
 
 
+def load_bce(path):
+    ckpt = torch.load(path, map_location=device)
+
+    backbone = KochBackbone(128).to(device)
+    head = SiameseBCEHead(128).to(device)
+
+    backbone.load_state_dict(clean_state_dict(ckpt["backbone_state_dict"]), strict=False)
+    head.load_state_dict(clean_state_dict(ckpt["head_state_dict"]), strict=False)
+
+    backbone.eval()
+    head.eval()
+
+    return backbone, head
+
+
 @torch.no_grad()
-def get_scores(model, loader):
+def get_distance_scores(model, loader):
     scores, labels = [], []
 
     for x1, x2, y in loader:
@@ -63,7 +83,7 @@ def get_scores(model, loader):
         z1 = model(x1)
         z2 = model(x2)
 
-        d = F.pairwise_distance(z1, z2)
+        d = F.pairwise_distance(z1, z2, p=2)
         sim = -d
 
         scores.append(sim.cpu())
@@ -73,7 +93,28 @@ def get_scores(model, loader):
 
 
 @torch.no_grad()
-def get_scores_pretrained(model, loader):
+def get_bce_scores(model_tuple, loader):
+    backbone, head = model_tuple
+
+    scores, labels = [], []
+
+    for x1, x2, y in loader:
+        x1, x2 = x1.to(device), x2.to(device)
+
+        z1 = backbone(x1)
+        z2 = backbone(x2)
+
+        logits = head(z1, z2)
+        probs = torch.sigmoid(logits)
+
+        scores.append(probs.cpu())
+        labels.append(y)
+
+    return torch.cat(scores).numpy(), torch.cat(labels).numpy()
+
+
+@torch.no_grad()
+def get_pretrained_scores(model, loader):
     scores, labels = [], []
 
     for x1, x2, y in loader:
@@ -90,39 +131,73 @@ def get_scores_pretrained(model, loader):
     return torch.cat(scores).numpy(), torch.cat(labels).numpy()
 
 
-# ---------- Models ----------
+class FrozenResNet18(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        base = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        self.feature_extractor = torch.nn.Sequential(*list(base.children())[:-1])
 
-models_list = []
+        for p in self.parameters():
+            p.requires_grad = False
 
-# Exp2 Koch
-koch = load_clean(
-    KochBackbone(128).to(device),
-    "checkpoints/exp2_best_koch.pt"
-)
-models_list.append(("KochCNN", koch, test_loader_105, get_scores))
-
-# Exp2 ResNet
-resnet = load_clean(
-    ResNet18Backbone(128).to(device),
-    "checkpoints/exp2_best_resnet18.pt"
-)
-models_list.append(("ResNet18Scratch", resnet, test_loader_105, get_scores))
-
-# Exp3 pretrained
-base = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-feat = torch.nn.Sequential(*list(base.children())[:-1]).to(device)
-
-def pretrained_forward(x):
-    x = feat(x)
-    x = x.view(x.size(0), -1)
-    return F.normalize(x, dim=1)
-
-models_list.append(("ResNet18_Pretrained", pretrained_forward, test_loader_224, get_scores_pretrained))
+    def forward(self, x):
+        x = self.feature_extractor(x)
+        x = x.view(x.size(0), -1)
+        return F.normalize(x, p=2, dim=1)
 
 
-# ---------- ROC ----------
+models_list = [
+    # Experiment 1
+    (
+        "BCE_L1",
+        load_bce("checkpoints/best_bce_l1.pt"),
+        test_loader_105,
+        get_bce_scores,
+    ),
+    (
+        "Contrastive",
+        load_backbone(KochBackbone(128).to(device), "checkpoints/best_contrastive.pt"),
+        test_loader_105,
+        get_distance_scores,
+    ),
+    (
+        "Triplet_Random",
+        load_backbone(KochBackbone(128).to(device), "checkpoints/best_triplet_random_margin_0.2.pt"),
+        test_loader_105,
+        get_distance_scores,
+    ),
+    (
+        "Triplet_Semihard",
+        load_backbone(KochBackbone(128).to(device), "checkpoints/best_triplet_semihard_margin_0.2.pt"),
+        test_loader_105,
+        get_distance_scores,
+    ),
 
-plt.figure(figsize=(8,6))
+    # Experiment 2
+    (
+        "KochCNN_Exp2",
+        load_backbone(KochBackbone(128).to(device), "checkpoints/exp2_best_koch.pt"),
+        test_loader_105,
+        get_distance_scores,
+    ),
+    (
+        "ResNet18_Scratch",
+        load_backbone(ResNet18Backbone(128).to(device), "checkpoints/exp2_best_resnet18.pt"),
+        test_loader_105,
+        get_distance_scores,
+    ),
+
+    # Experiment 3
+    (
+        "ResNet18_Pretrained_Frozen",
+        FrozenResNet18().to(device).eval(),
+        test_loader_224,
+        get_pretrained_scores,
+    ),
+]
+
+
+plt.figure(figsize=(10, 7))
 rows = []
 
 for name, model, loader, scorer in models_list:
@@ -137,14 +212,17 @@ for name, model, loader, scorer in models_list:
 
     plt.plot(fpr, tpr, label=f"{name} (AUC={roc_auc:.3f})")
 
-plt.plot([0,1],[0,1],'--')
-plt.xlabel("FPR")
-plt.ylabel("TPR")
-plt.title("All Models ROC")
-plt.legend()
-plt.grid()
+plt.plot([0, 1], [0, 1], "--", label="Random")
 
-plt.savefig("outputs/all_models_roc.png", dpi=300)
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Comparison Across All Models")
+plt.legend(fontsize=8)
+plt.grid(True)
+plt.tight_layout()
+
+plt.savefig("outputs/all_models_roc.png", dpi=400)
+plt.close()
 
 df = pd.DataFrame(rows)
 df.to_csv("outputs/all_models_auc.csv", index=False)

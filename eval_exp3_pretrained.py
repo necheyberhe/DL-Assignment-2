@@ -101,7 +101,25 @@ def find_best_threshold(scores, labels):
 
 scores, labels = get_scores()
 best_thr, test_acc = find_best_threshold(scores, labels)
+from sklearn.metrics import roc_curve, auc
+import matplotlib.pyplot as plt
 
+fpr, tpr, _ = roc_curve(labels.numpy(), scores.numpy())
+roc_auc = auc(fpr, tpr)
+
+print("AUC:", roc_auc)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, label=f"Frozen ImageNet ResNet-18 (AUC={roc_auc:.4f})")
+plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("Experiment 3 ROC Curve")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig(output_dir / "exp3_roc_curve.png", dpi=400)
+plt.close()
 print("Pretrained baseline:")
 print("Best threshold:", best_thr)
 print("Test accuracy:", test_acc)
@@ -154,11 +172,11 @@ print("One-shot:", oneshot)
 
 
 # ---------- Save ----------
-
 df = pd.DataFrame([{
     "method": "ResNet18_Pretrained_Frozen",
     "test_accuracy": test_acc,
     "threshold": best_thr,
+    "auc": roc_auc,
     "oneshot_N2": oneshot[2],
     "oneshot_N5": oneshot[5],
     "oneshot_N20": oneshot[20],

@@ -1,4 +1,8 @@
 model,auc
-KochCNN,0.8321400000000001
-ResNet18Scratch,0.750544
-ResNet18_Pretrained,0.8056559999999999
+BCE_L1,0.67204
+Contrastive,0.8163
+Triplet_Random,0.7715080000000001
+Triplet_Semihard,0.746656
+KochCNN_Exp2,0.891816
+ResNet18_Scratch,0.8303399999999999
+ResNet18_Pretrained_Frozen,0.77356

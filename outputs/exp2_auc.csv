@@ -1,3 +1,3 @@
 backbone,auc,checkpoint
-KochCNN,0.840528,checkpoints/exp2_best_koch.pt
-ResNet18Scratch,0.689572,checkpoints/exp2_best_resnet18.pt
+KochCNN,0.891816,checkpoints/exp2_best_koch.pt
+ResNet18Scratch,0.8303399999999999,checkpoints/exp2_best_resnet18.pt

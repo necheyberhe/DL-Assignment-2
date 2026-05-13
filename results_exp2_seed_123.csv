@@ -1,0 +1,3 @@
+backbone,loss,margin,embedding_dim,params,macs,approx_flops,train_time_sec,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,seed,max_epochs,patience,min_delta,stopping_rule
+koch,triplet_semihard,0.2,128,10777024,998408192.0,1996816384.0,2248.7326335906982,25,0.9145628213882446,0.9636363387107849,0.789,checkpoints/exp2_best_koch.pt,123,30,5,0.0001,validation_accuracy
+koch,triplet_semihard,0.2,128,10777024,998408192.0,1996816384.0,3487.064393043518,30,0.8747062087059021,0.9659090638160706,0.739,checkpoints/exp2_best_koch.pt,123,30,5,0.0001,validation_accuracy
