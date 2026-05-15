@@ -1,4 +1,3 @@
-method,backbone,loss,margin,selection_metric,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,seed,train_time_sec,max_epochs,patience,min_delta,stopping_rule
-Contrastive,KochCNN,contrastive,1.0,validation_accuracy,11,0.6079727411270142,0.8068181872367859,0.729,checkpoints/best_contrastive_seed_123.pt,123,369.0780940055847,30,5,0.0001,validation_accuracy
-Contrastive,KochCNN,contrastive,1.0,validation_accuracy,11,0.6079727411270142,0.8068181872367859,0.729,checkpoints/best_contrastive_seed_123.pt,123,368.70870900154114,30,5,0.0001,validation_accuracy
-Contrastive,KochCNN,contrastive,1.0,validation_accuracy,11,0.6079727411270142,0.8068181872367859,0.729,checkpoints/best_contrastive_seed_123.pt,123,297.1271650791168,30,5,0.0001,validation_accuracy
+experiment,method,backbone,loss,margin,seed,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,history_csv,train_time_sec,max_epochs,patience,min_delta,stopping_rule
+exp1,Triplet_Random,KochCNN,triplet_random,0.2,123,11,0.7404060363769531,0.8840909004211426,0.799,checkpoints\best_triplet_random_margin_0.2_seed_123.pt,outputs\history_triplet_random_margin_0.2_seed_123.csv,1275.9237489700317,30,5,0.0001,validation_accuracy
+exp1,Triplet_Semihard,KochCNN,triplet_semihard,0.5,123,29,0.9154360890388489,0.9659090638160706,0.76,checkpoints\best_triplet_semihard_margin_0.5_seed_123.pt,outputs\history_triplet_semihard_margin_0.5_seed_123.csv,1113.051659822464,30,5,0.0001,validation_accuracy

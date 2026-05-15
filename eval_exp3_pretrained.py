@@ -107,6 +107,11 @@ import matplotlib.pyplot as plt
 fpr, tpr, _ = roc_curve(labels.numpy(), scores.numpy())
 roc_auc = auc(fpr, tpr)
 
+pd.DataFrame({
+    "fpr": fpr,
+    "tpr": tpr,
+}).to_csv(output_dir / "roc_exp3_frozen_resnet18.csv", index=False)
+
 print("AUC:", roc_auc)
 
 plt.figure(figsize=(8, 6))

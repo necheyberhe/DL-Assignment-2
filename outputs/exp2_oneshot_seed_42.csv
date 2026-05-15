@@ -1,0 +1,3 @@
+backbone,oneshot_acc_N2,oneshot_acc_N5,oneshot_acc_N20,checkpoint
+KochCNN,0.96,0.755,0.49,checkpoints\exp2_best_koch_seed_42.pt
+ResNet18Scratch,0.885,0.605,0.335,checkpoints\exp2_best_resnet18_seed_42.pt

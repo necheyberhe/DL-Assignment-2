@@ -41,8 +41,7 @@ full_train_ds = PairDataset(pairs_train, root_dir, transform)
 train_size = int(0.8 * len(full_train_ds))
 val_size = len(full_train_ds) - train_size
 
-generator = torch.Generator().manual_seed(seed)
-
+generator = torch.Generator().manual_seed(42)
 train_ds, val_ds = random_split(
     full_train_ds,
     [train_size, val_size],
@@ -260,23 +259,24 @@ history_df.to_csv(history_path, index=False)
 print(f"Saved history: {history_path}")
 
 append_result(
-    "results_exp1.csv",
+    f"results_exp1_seed_{seed}.csv",
     {
+        "experiment": "exp1",
         "method": "BCE_L1",
         "backbone": "KochCNN",
-        "loss": "BCE",
+        "loss": "bce_l1",
         "margin": "",
-        "selection_metric": "validation_accuracy",
+        "seed": seed,
         "best_epoch": best_epoch,
         "val_threshold": best_threshold_saved,
         "val_accuracy": best_val_acc,
         "test_accuracy": best_test_acc_saved,
         "checkpoint": f"checkpoints/best_bce_l1_seed_{seed}.pt",
-        "seed": seed,
+        "history_csv": str(history_path),
+        "train_time_sec": time.time() - start_time,
         "max_epochs": num_epochs,
         "patience": patience,
         "min_delta": min_delta,
         "stopping_rule": "validation_accuracy",
-        "train_time_sec": time.time() - start_time
     }
 )

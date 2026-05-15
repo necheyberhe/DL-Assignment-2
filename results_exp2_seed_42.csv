@@ -1,3 +1,3 @@
-backbone,loss,margin,embedding_dim,params,macs,approx_flops,train_time_sec,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,seed,max_epochs,patience,min_delta,stopping_rule
-koch,triplet_semihard,0.2,128,10777024,998408192.0,1996816384.0,2356.1958174705505,27,0.8786067962646484,0.9522727131843567,0.755,checkpoints/exp2_best_koch.pt,42,30,5,0.0001,validation_accuracy
-resnet18,triplet_semihard,0.2,128,11242176,476117440.0,952234880.0,4488.25742316246,30,0.8594853281974792,0.925000011920929,0.725,checkpoints/exp2_best_resnet18.pt,42,30,5,0.0001,validation_accuracy
+experiment,backbone,loss,margin,embedding_dim,params,macs,approx_flops,input_size,flops_convention,train_time_sec,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,history_csv,seed,max_epochs,patience,min_delta,stopping_rule
+exp2,koch,triplet_semihard,0.2,128,10777024,998408192.0,1996816384.0,1x3x105x105,FLOPs = 2 * MACs,4167.829182386398,13,0.8907807469367981,0.918181836605072,0.777,checkpoints\exp2_best_koch_seed_42.pt,outputs\history_exp2_koch_seed_42.csv,42,30,5,0.0001,validation_accuracy
+exp2,resnet18,triplet_semihard,0.2,128,11242176,476117440.0,952234880.0,1x3x105x105,FLOPs = 2 * MACs,1743.5792162418365,30,0.821028470993042,0.9363636374473572,0.71,checkpoints\exp2_best_resnet18_seed_42.pt,outputs\history_exp2_resnet18_seed_42.csv,42,30,5,0.0001,validation_accuracy

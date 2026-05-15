@@ -21,6 +21,32 @@ pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairs
 output_dir = Path("outputs")
 output_dir.mkdir(exist_ok=True)
 
+results_csv = "results_exp2_seed_42.csv"
+results_df = pd.read_csv(results_csv)
+
+models = []
+
+for _, row in results_df.iterrows():
+
+    backbone_name = row["backbone"]
+
+    if backbone_name == "koch":
+        display_name = "KochCNN"
+
+    elif backbone_name == "resnet18":
+        display_name = "ResNet18Scratch"
+
+    else:
+        raise ValueError(backbone_name)
+
+    models.append(
+        (
+            display_name,
+            backbone_name,
+            row["checkpoint"],
+        )
+    )
+
 transform = transforms.Compose([
     transforms.Resize((105, 105)),
     transforms.ToTensor(),
@@ -74,10 +100,10 @@ def get_scores(model):
     return torch.cat(scores).numpy(), torch.cat(labels).numpy()
 
 
-models = [
-    ("KochCNN", "koch", "checkpoints/exp2_best_koch.pt"),
-    ("ResNet18Scratch", "resnet18", "checkpoints/exp2_best_resnet18.pt"),
-]
+# models = [
+#     ("KochCNN", "koch", "checkpoints/exp2_best_koch.pt"),
+#     ("ResNet18Scratch", "resnet18", "checkpoints/exp2_best_resnet18.pt"),
+# ]
 
 rows = []
 
@@ -92,6 +118,13 @@ for display_name, backbone_name, ckpt in models:
     fpr, tpr, _ = roc_curve(labels, scores)
     roc_auc = auc(fpr, tpr)
 
+    safe_name = display_name.lower().replace(" ", "_").replace("-", "_")
+
+    pd.DataFrame({
+        "fpr": fpr,
+        "tpr": tpr,
+    }).to_csv(output_dir / f"roc_exp2_{safe_name}.csv", index=False)
+        
     rows.append({
         "backbone": display_name,
         "auc": roc_auc,

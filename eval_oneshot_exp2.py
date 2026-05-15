@@ -16,7 +16,32 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 episodes_path = Path("outputs/oneshot_episodes.json")
 output_dir = Path("outputs")
 output_dir.mkdir(exist_ok=True)
+results_csv = "results_exp2_seed_42.csv"
+results_df = pd.read_csv(results_csv)
+if "experiment" in results_df.columns:
+    results_df = results_df[results_df["experiment"] == "exp2"]
+models = []
 
+for _, row in results_df.iterrows():
+
+    backbone_name = row["backbone"]
+
+    if backbone_name == "koch":
+        display_name = "KochCNN"
+
+    elif backbone_name == "resnet18":
+        display_name = "ResNet18Scratch"
+
+    else:
+        raise ValueError(backbone_name)
+
+    models.append(
+        (
+            display_name,
+            backbone_name,
+            row["checkpoint"],
+        )
+    )
 transform = transforms.Compose([
     transforms.Resize((105, 105)),
     transforms.ToTensor(),
@@ -91,10 +116,10 @@ def evaluate_model(model, episodes):
 with open(episodes_path, "r") as f:
     episodes = json.load(f)
 
-models = [
-    ("KochCNN", "koch", "checkpoints/exp2_best_koch.pt"),
-    ("ResNet18Scratch", "resnet18", "checkpoints/exp2_best_resnet18.pt"),
-]
+# models = [
+#     ("KochCNN", "koch", "checkpoints/exp2_best_koch.pt"),
+#     ("ResNet18Scratch", "resnet18", "checkpoints/exp2_best_resnet18.pt"),
+# ]
 
 rows = []
 
@@ -115,7 +140,7 @@ for display_name, backbone_name, ckpt in models:
     print(accs)
 
 df = pd.DataFrame(rows)
-out_path = output_dir / "exp2_oneshot.csv"
+out_path = output_dir / "exp2_oneshot_seed_42.csv"
 df.to_csv(out_path, index=False)
 
 print(df)

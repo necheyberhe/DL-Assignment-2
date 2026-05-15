@@ -15,8 +15,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 root_dir = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\lfw2\lfw2"
 pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTest.txt"
 
-threshold = 0.905  # your best threshold
-
+threshold = 0.8907807469367981
 
 transform = transforms.Compose([
     transforms.Resize((105,105)),
@@ -45,7 +44,7 @@ loader = DataLoader(
 model = KochBackbone(128).to(device)
 
 ckpt = torch.load(
-    "checkpoints/exp2_best_koch.pt",
+   "checkpoints/exp2_best_koch_seed_42.pt",
     map_location=device
 )
 

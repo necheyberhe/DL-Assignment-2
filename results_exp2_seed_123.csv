@@ -1,3 +1,2 @@
-backbone,loss,margin,embedding_dim,params,macs,approx_flops,train_time_sec,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,seed,max_epochs,patience,min_delta,stopping_rule
-koch,triplet_semihard,0.2,128,10777024,998408192.0,1996816384.0,2248.7326335906982,25,0.9145628213882446,0.9636363387107849,0.789,checkpoints/exp2_best_koch.pt,123,30,5,0.0001,validation_accuracy
-koch,triplet_semihard,0.2,128,10777024,998408192.0,1996816384.0,3487.064393043518,30,0.8747062087059021,0.9659090638160706,0.739,checkpoints/exp2_best_koch.pt,123,30,5,0.0001,validation_accuracy
+experiment,backbone,loss,margin,embedding_dim,params,macs,approx_flops,input_size,flops_convention,train_time_sec,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,history_csv,seed,max_epochs,patience,min_delta,stopping_rule
+exp2,koch,triplet_semihard,0.2,128,10777024,998408192.0,1996816384.0,1x3x105x105,FLOPs = 2 * MACs,1475.4135191440582,29,0.9366239309310913,0.9613636136054993,0.78,checkpoints\exp2_best_koch_seed_123.pt,outputs\history_exp2_koch_seed_123.csv,123,30,5,0.0001,validation_accuracy

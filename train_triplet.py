@@ -1,90 +1,137 @@
-import random
+import argparse
+import time
 from pathlib import Path
 
+import pandas as pd
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
-from utils.logger import append_result
+
 from Data.datasets import (
     PairDataset,
     IdentityDataset,
     identities_from_pairs,
     BalancedIdentityBatchSampler,
 )
-
 from Models.models import KochBackbone
 from losses.losses import triplet_loss, semihard_triplets
+from utils.logger import append_result
+from utils.seed import set_seed
+
 
 print("Triplet training started")
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-import argparse
-from utils.seed import set_seed
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=42)
 args = parser.parse_args()
 
-set_seed(args.seed)
 seed = args.seed
+set_seed(seed)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 root_dir = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\lfw2\lfw2"
 pairs_train = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTrain.txt"
 pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTest.txt"
 
+embedding_dim = 128
+num_epochs = 30
+batch_size_eval = 32
+lr = 1e-4
+patience = 5
+min_delta = 1e-4
+
+checkpoint_dir = Path("checkpoints")
+checkpoint_dir.mkdir(exist_ok=True)
+
+output_dir = Path("outputs")
+output_dir.mkdir(exist_ok=True)
+
 transform = transforms.Compose([
     transforms.Resize((105, 105)),
     transforms.ToTensor(),
-    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
 ])
 
-# Pair datasets for validation/test evaluation
+# -------------------------
+# Pair datasets
+# -------------------------
+
 full_pair_train_ds = PairDataset(pairs_train, root_dir, transform)
 
 train_size = int(0.8 * len(full_pair_train_ds))
 val_size = len(full_pair_train_ds) - train_size
 
+# Fixed validation split for fair Experiment 1 comparison
 generator = torch.Generator().manual_seed(42)
 
 pair_train_ds, pair_val_ds = random_split(
     full_pair_train_ds,
     [train_size, val_size],
-    generator=generator
+    generator=generator,
 )
 
 pair_test_ds = PairDataset(pairs_test, root_dir, transform)
 
-val_loader = DataLoader(pair_val_ds, batch_size=32, shuffle=False)
-test_loader = DataLoader(pair_test_ds, batch_size=32, shuffle=False)
+val_loader = DataLoader(pair_val_ds, batch_size=batch_size_eval, shuffle=False)
+test_loader = DataLoader(pair_test_ds, batch_size=batch_size_eval, shuffle=False)
 
-# Identity dataset for triplet training
+# -------------------------
+# Identity datasets
+# -------------------------
+
 train_names = identities_from_pairs(full_pair_train_ds.pairs)
+
+val_pair_indices = pair_val_ds.indices
+val_pairs = [full_pair_train_ds.pairs[i] for i in val_pair_indices]
+val_names = identities_from_pairs(val_pairs)
 
 identity_ds = IdentityDataset(
     root_dir=root_dir,
     allowed_names=train_names,
-    transform=transform
+    transform=transform,
 )
 
 balanced_sampler = BalancedIdentityBatchSampler(
     identity_ds,
     identities_per_batch=16,
-    images_per_identity=4
+    images_per_identity=4,
 )
 
 identity_loader = DataLoader(
     identity_ds,
-    batch_sampler=balanced_sampler
+    batch_sampler=balanced_sampler,
 )
+
+val_identity_ds = IdentityDataset(
+    root_dir=root_dir,
+    allowed_names=val_names,
+    transform=transform,
+)
+
+val_balanced_sampler = BalancedIdentityBatchSampler(
+    val_identity_ds,
+    identities_per_batch=16,
+    images_per_identity=4,
+)
+
+val_identity_loader = DataLoader(
+    val_identity_ds,
+    batch_sampler=val_balanced_sampler,
+)
+
 print("Triplet train images:", len(identity_ds))
 print("Train identities:", len(identity_ds.name_to_label))
+print("Validation identity images:", len(val_identity_ds))
+print("Validation identities:", len(val_identity_ds.name_to_label))
 print("Val pairs:", len(pair_val_ds))
 print("Test pairs:", len(pair_test_ds))
 print("Device:", device)
 
 
 @torch.no_grad()
-def evaluate_distance(backbone, loader, device, threshold):
+def evaluate_distance(backbone, loader, threshold):
     backbone.eval()
 
     correct = 0
@@ -109,8 +156,7 @@ def evaluate_distance(backbone, loader, device, threshold):
         all_distances.append(distances.cpu())
         all_labels.append(label.cpu())
 
-    accuracy = correct / total
-    return accuracy, torch.cat(all_distances), torch.cat(all_labels)
+    return correct / total, torch.cat(all_distances), torch.cat(all_labels)
 
 
 def find_best_distance_threshold(distances, labels):
@@ -132,11 +178,7 @@ def find_best_distance_threshold(distances, labels):
 
 
 def make_random_triplets(embeddings, labels):
-    """
-    Random triplet baseline.
-    Requires at least two samples from some identities in the batch.
-    """
-    device = embeddings.device
+    device_local = embeddings.device
     labels = labels.view(-1)
 
     anchors = []
@@ -154,8 +196,8 @@ def make_random_triplets(embeddings, labels):
         if len(same) == 0 or len(diff) == 0:
             continue
 
-        p_idx = same[torch.randint(len(same), (1,), device=device)].item()
-        n_idx = diff[torch.randint(len(diff), (1,), device=device)].item()
+        p_idx = same[torch.randint(len(same), (1,), device=device_local)].item()
+        n_idx = diff[torch.randint(len(diff), (1,), device=device_local)].item()
 
         anchors.append(i)
         positives.append(p_idx)
@@ -164,9 +206,9 @@ def make_random_triplets(embeddings, labels):
     if len(anchors) == 0:
         return None
 
-    anchors = torch.tensor(anchors, dtype=torch.long, device=device)
-    positives = torch.tensor(positives, dtype=torch.long, device=device)
-    negatives = torch.tensor(negatives, dtype=torch.long, device=device)
+    anchors = torch.tensor(anchors, dtype=torch.long, device=device_local)
+    positives = torch.tensor(positives, dtype=torch.long, device=device_local)
+    negatives = torch.tensor(negatives, dtype=torch.long, device=device_local)
 
     return (
         embeddings.index_select(0, anchors),
@@ -175,31 +217,60 @@ def make_random_triplets(embeddings, labels):
     )
 
 
-def train_triplet_model(mode, margin=0.2, num_epochs=3):
+@torch.no_grad()
+def evaluate_triplet_validation_loss(backbone, mode, margin):
+    backbone.eval()
+
+    total_loss = 0.0
+    used_batches = 0
+    skipped_batches = 0
+
+    for images, labels in val_identity_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+
+        embeddings = backbone(images)
+
+        if mode == "random":
+            triplets = make_random_triplets(embeddings, labels)
+        else:
+            triplets = semihard_triplets(embeddings, labels, margin=margin)
+
+        if triplets is None:
+            skipped_batches += 1
+            continue
+
+        anchor, positive, negative = triplets
+        loss = triplet_loss(anchor, positive, negative, margin=margin)
+
+        total_loss += loss.item()
+        used_batches += 1
+
+    val_loss = total_loss / used_batches if used_batches > 0 else float("nan")
+    return val_loss, used_batches, skipped_batches
+
+
+def train_triplet_model(mode, margin):
     assert mode in {"random", "semihard"}
 
     print(f"\n=== Training triplet model: mode={mode}, margin={margin} ===")
 
-    checkpoint_dir = Path("checkpoints")
-    checkpoint_dir.mkdir(exist_ok=True)
-
-    backbone = KochBackbone(embedding_dim=128).to(device)
-
-    optimizer = torch.optim.Adam(
-        backbone.parameters(),
-        lr=1e-4
-    )
+    backbone = KochBackbone(embedding_dim=embedding_dim).to(device)
+    optimizer = torch.optim.Adam(backbone.parameters(), lr=lr)
 
     best_val_acc = 0.0
     best_epoch = -1
     best_threshold_saved = None
     best_test_acc_saved = None
-    patience = 5
-    min_delta = 1e-4
+    checkpoint_path = None
+
     epochs_without_improvement = 0
+    history = []
+    start_time = time.time()
 
     for epoch in range(num_epochs):
         backbone.train()
+
         total_loss = 0.0
         used_batches = 0
         skipped_batches = 0
@@ -229,22 +300,52 @@ def train_triplet_model(mode, margin=0.2, num_epochs=3):
             total_loss += loss.item()
             used_batches += 1
 
-        if used_batches == 0:
-            avg_loss = float("nan")
-        else:
-            avg_loss = total_loss / used_batches
+        train_loss = total_loss / used_batches if used_batches > 0 else float("nan")
 
         val_default_acc, val_distances, val_labels = evaluate_distance(
-            backbone, val_loader, device, threshold=margin
+            backbone,
+            val_loader,
+            threshold=margin,
         )
 
         best_threshold, val_best_acc = find_best_distance_threshold(
-            val_distances, val_labels
+            val_distances,
+            val_labels,
         )
 
         test_acc, _, _ = evaluate_distance(
-            backbone, test_loader, device, threshold=best_threshold
+            backbone,
+            test_loader,
+            threshold=best_threshold,
         )
+
+        val_loss, val_loss_used_batches, val_loss_skipped_batches = (
+            evaluate_triplet_validation_loss(
+                backbone=backbone,
+                mode=mode,
+                margin=margin,
+            )
+        )
+
+        elapsed = time.time() - start_time
+
+        history.append({
+            "seed": seed,
+            "model": f"Triplet_{mode}",
+            "margin": margin,
+            "epoch": epoch + 1,
+            "train_loss": train_loss,
+            "val_loss": val_loss,
+            "val_default_acc": val_default_acc,
+            "val_best_acc": val_best_acc,
+            "val_best_threshold": best_threshold,
+            "test_acc_at_val_threshold": test_acc,
+            "used_batches": used_batches,
+            "skipped_batches": skipped_batches,
+            "val_loss_used_batches": val_loss_used_batches,
+            "val_loss_skipped_batches": val_loss_skipped_batches,
+            "wall_time_sec": elapsed,
+        })
 
         if val_best_acc > best_val_acc + min_delta:
             best_val_acc = val_best_acc
@@ -253,43 +354,65 @@ def train_triplet_model(mode, margin=0.2, num_epochs=3):
             best_test_acc_saved = test_acc
             epochs_without_improvement = 0
 
+            checkpoint_path = (
+                checkpoint_dir
+                / f"best_triplet_{mode}_margin_{margin}_seed_{seed}.pt"
+            )
+
             torch.save(
                 {
-                    "model_name": "contrastive_koch",
+                    "model_name": f"triplet_{mode}_koch",
+                    "seed": seed,
                     "epoch": best_epoch,
-                    "embedding_dim": 128,
+                    "embedding_dim": embedding_dim,
                     "margin": margin,
+                    "max_epochs": num_epochs,
+                    "patience": patience,
+                    "min_delta": min_delta,
+                    "stopping_rule": "validation_accuracy",
                     "backbone_state_dict": backbone.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "val_best_acc": best_val_acc,
-                    "val_best_threshold": best_threshold,
-                    "test_acc_at_val_threshold": test_acc,
+                    "val_best_threshold": best_threshold_saved,
+                    "test_acc_at_val_threshold": best_test_acc_saved,
                 },
-                checkpoint_dir / f"best_contrastive_margin_{margin}.pt"
+                checkpoint_path,
             )
         else:
             epochs_without_improvement += 1
 
-        if epochs_without_improvement >= patience:
-            print(f"Early stopping at epoch {epoch + 1}; best epoch was {best_epoch}")
-            break
         print(
             f"Mode {mode} | "
             f"Epoch {epoch + 1}/{num_epochs} | "
-            f"loss = {avg_loss:.4f} | "
-            f"used_batches = {used_batches} | "
-            f"skipped_batches = {skipped_batches} | "
-            f"val@margin = {val_default_acc:.4f} | "
-            f"val_best_thr = {best_threshold:.4f} | "
-            f"val_best_acc = {val_best_acc:.4f} | "
-            f"test_acc = {test_acc:.4f}"
+            f"train_loss={train_loss:.4f} | "
+            f"val_loss={val_loss:.4f} | "
+            f"used_batches={used_batches} | "
+            f"skipped_batches={skipped_batches} | "
+            f"val_loss_batches={val_loss_used_batches} | "
+            f"val@margin={val_default_acc:.4f} | "
+            f"val_best_thr={best_threshold:.4f} | "
+            f"val_best_acc={val_best_acc:.4f} | "
+            f"test_acc={test_acc:.4f}"
         )
+
+        if epochs_without_improvement >= patience:
+            print(f"Early stopping at epoch {epoch + 1}; best epoch was {best_epoch}")
+            break
+
+    train_time_sec = time.time() - start_time
+
+    history_path = (
+        output_dir / f"history_triplet_{mode}_margin_{margin}_seed_{seed}.csv"
+    )
+    pd.DataFrame(history).to_csv(history_path, index=False)
 
     print(f"\nBest {mode} triplet epoch: {best_epoch}")
     print(f"Best {mode} validation accuracy: {best_val_acc:.4f}")
     print(f"Best {mode} validation threshold: {best_threshold_saved:.4f}")
     print(f"{mode} test accuracy at best threshold: {best_test_acc_saved:.4f}")
-    print(f"Saved checkpoint: checkpoints/best_triplet_{mode}.pt")
+    print(f"Saved checkpoint: {checkpoint_path}")
+    print(f"Saved history: {history_path}")
+
     return {
         "mode": mode,
         "margin": margin,
@@ -297,32 +420,30 @@ def train_triplet_model(mode, margin=0.2, num_epochs=3):
         "best_val_acc": best_val_acc,
         "best_threshold": best_threshold_saved,
         "test_acc": best_test_acc_saved,
+        "checkpoint": str(checkpoint_path),
+        "train_time_sec": train_time_sec,
+        "history_csv": str(history_path),
     }
 
-if __name__ == "__main__":
-    num_epochs =30
 
-    # Random triplet ablation, fixed margin
+if __name__ == "__main__":
     random_result = train_triplet_model(
         mode="random",
         margin=0.2,
-        num_epochs=num_epochs
     )
 
-    # Semi-hard margin tuning
     semihard_results = []
 
     for margin in [0.1, 0.2, 0.5]:
         result = train_triplet_model(
             mode="semihard",
             margin=margin,
-            num_epochs=num_epochs
         )
         semihard_results.append(result)
 
     best_semihard = max(
         semihard_results,
-        key=lambda r: r["best_val_acc"]
+        key=lambda r: r["best_val_acc"],
     )
 
     print("\n=== Triplet summary ===")
@@ -334,34 +455,51 @@ if __name__ == "__main__":
 
     print("\nBest semi-hard triplet:")
     print(best_semihard)
+
+    result_path = f"results_exp1_seed_{seed}.csv"
+
     append_result(
-        "results_exp1.csv",
+        result_path,
         {
+            "experiment": "exp1",
             "method": "Triplet_Random",
             "backbone": "KochCNN",
             "loss": "triplet_random",
             "margin": random_result["margin"],
-            "selection_metric": "validation_accuracy",
+            "seed": seed,
             "best_epoch": random_result["best_epoch"],
             "val_threshold": random_result["best_threshold"],
             "val_accuracy": random_result["best_val_acc"],
             "test_accuracy": random_result["test_acc"],
-            "checkpoint": f"checkpoints/best_triplet_random_margin_{random_result['margin']}.pt",
-        }
+            "checkpoint": random_result["checkpoint"],
+            "history_csv": random_result["history_csv"],
+            "train_time_sec": random_result["train_time_sec"],
+            "max_epochs": num_epochs,
+            "patience": patience,
+            "min_delta": min_delta,
+            "stopping_rule": "validation_accuracy",
+        },
     )
 
     append_result(
-        "results_exp1.csv",
+        result_path,
         {
+            "experiment": "exp1",
             "method": "Triplet_Semihard",
             "backbone": "KochCNN",
             "loss": "triplet_semihard",
             "margin": best_semihard["margin"],
-            "selection_metric": "validation_accuracy",
+            "seed": seed,
             "best_epoch": best_semihard["best_epoch"],
             "val_threshold": best_semihard["best_threshold"],
             "val_accuracy": best_semihard["best_val_acc"],
             "test_accuracy": best_semihard["test_acc"],
-            "checkpoint": f"checkpoints/best_triplet_semihard_margin_{best_semihard['margin']}.pt",
-        }
+            "checkpoint": best_semihard["checkpoint"],
+            "history_csv": best_semihard["history_csv"],
+            "train_time_sec": best_semihard["train_time_sec"],
+            "max_epochs": num_epochs,
+            "patience": patience,
+            "min_delta": min_delta,
+            "stopping_rule": "validation_accuracy",
+        },
     )

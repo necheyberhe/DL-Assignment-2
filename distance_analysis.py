@@ -80,9 +80,8 @@ print("Selected images:", len(selected_indices))
 print("Loading model...")
 
 model = KochBackbone(embedding_dim=128).to(device)
-
 checkpoint = torch.load(
-    "checkpoints/exp2_best_koch.pt",
+    "checkpoints/exp2_best_koch_seed_42.pt",
     map_location=device
 )
 

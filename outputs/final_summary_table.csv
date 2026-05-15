@@ -1,0 +1,8 @@
+experiment,model,loss,margin,seed,val_threshold,val_accuracy,test_accuracy,auc,oneshot_acc_N2,oneshot_acc_N5,oneshot_acc_N20,params,macs,approx_flops,train_time_sec,best_epoch,checkpoint,train_time_min
+Exp1,BCE_L1,bce_l1,,42,0.46,0.7159,0.672,0.712,0.68,0.375,0.13,,,,778.684250831604,7,checkpoints/best_bce_l1_seed_42.pt,12.9781
+Exp1,Contrastive,contrastive,1.0,42,0.6037,0.8068,0.758,0.8207,0.855,0.585,0.325,,,,454.2887573242188,7,checkpoints/best_contrastive_margin_1.0_seed_42.pt,7.5715
+Exp1,Triplet_Random,triplet_random,0.2,42,0.6918,0.8932,0.783,0.8755,0.915,0.77,0.48,,,,567.8604233264923,13,checkpoints\best_triplet_random_margin_0.2_seed_42.pt,9.4643
+Exp1,Triplet_Semihard,triplet_semihard,0.5,42,0.8835,0.9614,0.764,0.9031,0.925,0.755,0.495,,,,3999.725104808808,25,checkpoints\best_triplet_semihard_margin_0.5_seed_42.pt,66.6621
+Exp2,KochCNN,triplet_semihard,0.2,42,0.8908,0.9182,0.777,0.9028,0.96,0.755,0.49,10777024,998408192.0,1996816384.0,4167.829182386398,13,checkpoints\exp2_best_koch_seed_42.pt,69.4638
+Exp2,ResNet18Scratch,triplet_semihard,0.2,42,0.821,0.9364,0.71,0.8428,0.885,0.605,0.335,11242176,476117440.0,952234880.0,1743.5792162418363,30,checkpoints\exp2_best_resnet18_seed_42.pt,29.0597
+Exp3,Frozen ImageNet ResNet18,none,,42,0.809,,0.701,0.7736,0.775,0.56,0.32,,,,0.0,,Frozen pretrained ImageNet ResNet18,0.0

@@ -1,2 +1,2 @@
 method,test_accuracy,threshold,auc,oneshot_N2,oneshot_N5,oneshot_N20
-ResNet18_Pretrained_Frozen,0.7009999752044678,0.8090451955795288,0.77356,0.72,0.59,0.275
+ResNet18_Pretrained_Frozen,0.7009999752044678,0.8090451955795288,0.77356,0.775,0.56,0.32

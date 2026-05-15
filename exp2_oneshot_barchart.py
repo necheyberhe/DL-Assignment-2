@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Load CSV
-df = pd.read_csv("outputs/exp2_oneshot.csv")
-
+df = pd.read_csv("outputs/exp2_oneshot_seed_42.csv")
 # Categories
 tasks = ["N2", "N5", "N20"]
 
@@ -38,6 +37,7 @@ plt.legend()
 plt.grid(axis="y", linestyle="--", alpha=0.5)
 
 plt.tight_layout()
+df = pd.read_csv("outputs/exp2_oneshot_seed_42.csv")
 plt.savefig("outputs/exp2_oneshot_bar.png", dpi=400)
 plt.close()
 

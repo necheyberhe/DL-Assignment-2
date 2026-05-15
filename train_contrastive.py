@@ -18,7 +18,15 @@ from utils.seed import set_seed
 print("Contrastive training started")
 
 parser = argparse.ArgumentParser()
+
 parser.add_argument("--seed", type=int, default=42)
+
+parser.add_argument(
+    "--margin",
+    type=float,
+    default=1.0
+)
+
 args = parser.parse_args()
 
 seed = args.seed
@@ -32,7 +40,7 @@ pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairs
 
 embedding_dim = 128
 num_epochs = 30
-margin = 1.0
+margin = args.margin
 patience = 5
 min_delta = 1e-4
 lr = 1e-4
@@ -55,8 +63,7 @@ full_train_ds = PairDataset(pairs_train, root_dir, transform)
 train_size = int(0.8 * len(full_train_ds))
 val_size = len(full_train_ds) - train_size
 
-generator = torch.Generator().manual_seed(seed)
-
+generator = torch.Generator().manual_seed(42)
 train_ds, val_ds = random_split(
     full_train_ds,
     [train_size, val_size],
@@ -237,7 +244,7 @@ for epoch in range(num_epochs):
                 "val_best_threshold": best_threshold_saved,
                 "test_acc_at_val_threshold": best_test_acc_saved,
             },
-            checkpoint_dir / f"best_contrastive_seed_{seed}.pt",
+            checkpoint_dir / f"best_contrastive_margin_{margin}_seed_{seed}.pt",
         )
     else:
         epochs_without_improvement += 1
@@ -258,25 +265,26 @@ for epoch in range(num_epochs):
 
 train_time_sec = time.time() - start_time
 
-history_path = output_dir / f"history_contrastive_seed_{seed}.csv"
+history_path = output_dir / f"history_contrastive_margin_{margin}_seed_{seed}.csv"
 pd.DataFrame(history).to_csv(history_path, index=False)
 
 result_path = f"results_exp1_seed_{seed}.csv"
 
 append_result(
-    result_path,
+    f"results_exp1_seed_{seed}.csv",
     {
+        "experiment": "exp1",
         "method": "Contrastive",
         "backbone": "KochCNN",
         "loss": "contrastive",
         "margin": margin,
-        "selection_metric": "validation_accuracy",
+        "seed": seed,
         "best_epoch": best_epoch,
         "val_threshold": best_threshold_saved,
         "val_accuracy": best_val_acc,
         "test_accuracy": best_test_acc_saved,
-        "checkpoint": f"checkpoints/best_contrastive_seed_{seed}.pt",
-        "seed": seed,
+        "checkpoint": f"checkpoints/best_contrastive_margin_{margin}_seed_{seed}.pt",
+        "history_csv": str(history_path),
         "train_time_sec": train_time_sec,
         "max_epochs": num_epochs,
         "patience": patience,

@@ -17,7 +17,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 root_dir = Path(r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\lfw2\lfw2")
 pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTest.txt"
-results_csv = "results_exp1.csv"
+results_csv = "results_exp1_seed_42.csv"
 
 output_dir = Path("outputs")
 output_dir.mkdir(exist_ok=True)
@@ -258,7 +258,7 @@ def main():
         print(accs)
 
     out_df = pd.DataFrame(rows)
-    out_path = output_dir / "exp1_oneshot.csv"
+    out_path = output_dir / "exp1_oneshot_seed_42.csv"
     out_df.to_csv(out_path, index=False)
 
     print("\nOne-shot results:")

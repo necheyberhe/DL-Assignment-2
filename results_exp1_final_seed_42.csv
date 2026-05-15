@@ -1,0 +1,5 @@
+experiment,method,backbone,loss,margin,seed,best_epoch,val_threshold,val_accuracy,test_accuracy,checkpoint,history_csv,train_time_sec,max_epochs,patience,min_delta,stopping_rule
+exp1,BCE_L1,KochCNN,bce_l1,,42,7,0.4599999785423279,0.7159090638160706,0.672,checkpoints/best_bce_l1_seed_42.pt,outputs\history_bce_l1_seed_42.csv,778.684250831604,30,5,0.0001,validation_accuracy
+exp1,Contrastive,KochCNN,contrastive,1.0,42,7,0.6037355661392212,0.8068181872367859,0.758,checkpoints/best_contrastive_margin_1.0_seed_42.pt,outputs\history_contrastive_margin_1.0_seed_42.csv,454.28875732421875,30,5,0.0001,validation_accuracy
+exp1,Triplet_Random,KochCNN,triplet_random,0.2,42,13,0.6917656064033508,0.8931818008422852,0.783,checkpoints\best_triplet_random_margin_0.2_seed_42.pt,outputs\history_triplet_random_margin_0.2_seed_42.csv,567.8604233264923,30,5,0.0001,validation_accuracy
+exp1,Triplet_Semihard,KochCNN,triplet_semihard,0.5,42,25,0.8834934830665588,0.9613636136054993,0.764,checkpoints\best_triplet_semihard_margin_0.5_seed_42.pt,outputs\history_triplet_semihard_margin_0.5_seed_42.csv,3999.7251048088074,30,5,0.0001,validation_accuracy

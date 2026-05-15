@@ -1,0 +1,5 @@
+method,oneshot_acc_N2,oneshot_acc_N5,oneshot_acc_N20
+BCE_L1,0.68,0.375,0.13
+Contrastive,0.855,0.585,0.325
+Triplet_Random,0.915,0.77,0.48
+Triplet_Semihard,0.925,0.755,0.495

@@ -17,7 +17,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 root_dir = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\lfw2\lfw2"
 pairs_test = r"D:\Masters Study\2ndyear\Deep_Learning\DL-Assignment-2\Data\pairsDevTest.txt"
 
-results_csv = "results_exp1.csv"
+results_csv = "results_exp1_final_seed_42.csv"
 output_dir = Path("outputs")
 output_dir.mkdir(exist_ok=True)
 
@@ -135,6 +135,13 @@ def main():
         fpr, tpr, _ = roc_curve(labels, scores)
         roc_auc = auc(fpr, tpr)
 
+        safe_method = method.lower().replace(" ", "_").replace("-", "_")
+
+        pd.DataFrame({
+            "fpr": fpr,
+            "tpr": tpr,
+        }).to_csv(output_dir / f"roc_exp1_{safe_method}.csv", index=False)
+            
         roc_rows.append({
             "method": method,
             "auc": roc_auc
@@ -151,12 +158,12 @@ def main():
     plt.grid(True)
     plt.tight_layout()
 
-    roc_path = output_dir / "exp1_roc_curves.png"
+    roc_path = output_dir / "exp1_roc_curves_seed_42.png"
     plt.savefig(roc_path, dpi=300)
     plt.close()
 
     auc_df = pd.DataFrame(roc_rows)
-    auc_path = output_dir / "exp1_auc.csv"
+    auc_path = output_dir / "exp1_auc_seed_42.csv"
     auc_df.to_csv(auc_path, index=False)
 
     print("\nAUC results:")
